@@ -1,6 +1,5 @@
 import datetime
 import os
-import csv
 
 class User:
     def __init__(self, username):
@@ -11,21 +10,6 @@ class User:
         """
         self.username = username
     
-    def to_dict(self):
-        return {
-            "username": self.username
-        }
-    
-    def save_to_csv(self):
-        file_exists = os.path.isfile("database/users.csv")
-        with open("database/users.csv", "a", newline="") as f:
-            fieldnames = ["username"]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(self.to_dict())
-
-
 class Vault:
     def __init__(self, vault_id, vault_name, start, end, user):
         """
@@ -64,6 +48,9 @@ class Vault:
         self.username = user.username # variable to store username as a string (not the object instance)
         self.pots = []  # List to store associated Pot instances
 
+    def __str__(self):
+        return f"Vault(vault_id={self.vault_id}, vault_name={self.vault_name}, start={self.start}, end={self.end}, username={self.username})"
+    
     def add_pot(self, pot):
         """
         Add a Pot instance to the Vault's list of pots.
@@ -86,24 +73,6 @@ class Vault:
                 sum += pot.amount
         return sum
     
-    def to_dict(self):
-        return {
-            "vault_id": self.vault_id,
-            "vault_name": self.vault_name,
-            "start": self.start,
-            "end": self.end,
-            "user": self.username,
-        }
-    
-    def save_to_csv(self):
-        file_exists = os.path.isfile("database/vaults.csv")
-        with open("database/vaults.csv", "a", newline="") as f:
-            fieldnames = ["vault_id", "vault_name", "start", "end", "user"]
-            writer = csv.DictWriter(f,fieldnames=fieldnames)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(self.to_dict())
-
 class Pot:
     def __init__(self, pot_id, pot_name, start, end, vault, user, amount=0.00):
         """
@@ -172,28 +141,7 @@ class Pot:
                 self.amount += sum
                 self.transactions = []
         return 
-    
-    def to_dict(self):
-        return {
-            "pot_id": self.pot_id,
-            "pot_name": self.pot_name,
-            "start": self.start,
-            "end": self.end,
-            "vault_id": self.vault_id,
-            "amount": self.amount,
-            "user": self.username
-        }
-    
-    def save_to_csv(self):
-        #start again here
-        file_exists = os.path.isfile("database/pots.csv")
-        with open("database/pots.csv", "a", newline="") as f:
-            fieldnames = ["pot_id", "pot_name", "start", "end", "vault_id", "amount", "user"]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(self.to_dict())
-        
+            
 class Transaction:
     def __init__(self, transaction_id, transaction_name, date, pot, user, type="out", amount=0.00):
         """
@@ -231,23 +179,3 @@ class Transaction:
         
         # Add this transaction to the pots list of transactions
         pot.add_transaction(self)
-
-    def to_dict(self):
-        return {
-        "transaction_id": self.transaction_id,
-        "transaction_name": self.transaction_name,
-        "date": self.date,
-        "pot_id": self.pot_id,
-        "type": self.type,
-        "amount": self.amount,
-        "user": self.username
-        }
-    
-    def save_to_csv(self):
-        file_exists = os.path.isfile("database/transactions.csv")
-        with open("database/transactions.csv", "a", newline ="") as f:
-            fieldnames = ["transaction_id", "transaction_name", "date", "pot_id", "type", "amount", "user"]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(self.to_dict())

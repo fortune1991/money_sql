@@ -1,4 +1,4 @@
-import csv, datetime, os
+import datetime, os, sqlite3
 from project_classes import User, Vault, Pot, Transaction
 from time import sleep
 
@@ -53,7 +53,7 @@ def submit_transaction(x, pot, user):
     
     if transaction:
         print_slow("Thanks, your transaction has been created succesfully")
-        transaction.save_to_csv()
+        # save transaction to database
         print()
     else:
         print_slow("ERROR: transaction not created succesfully")
@@ -123,7 +123,7 @@ def create_user(*args):
         print_slow("Now firstly, what is your name?: ")
         username = input()
         user = User(username)
-        user.save_to_csv()
+        # save user to database
         print("")
     return user
 
@@ -165,7 +165,7 @@ def create_pot(x, vault, user):
     
     if pot:
         print_slow("Thanks, your pot has been created succesfully")
-        pot.save_to_csv()
+        # save pot to database
         print()
         print()
     else:
@@ -206,7 +206,7 @@ def create_vault(x, user):
     if vault:
         print()
         print_slow("Thanks, your vault has been created succesfully")
-        vault.save_to_csv()
+        # save vault to database
         print()
         print()
     else:
@@ -215,41 +215,26 @@ def create_vault(x, user):
     return vault
 
 def create_profile():
+    # Establish a connection to the Database
+    db_path = "/Users/michaelfortune/Developer/projects/money/money_sql/money.db" 
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    
     # Create a User object
     print()
     user = create_user()
 
-    # Count number of existing vaults
-    file_exists = os.path.isfile("database/vaults.csv")
+    # Count number of existing vaults in database. if not exist = 0
 
-    if not file_exists:
-        start_vault = 0
-    
-    else:
-        vault_count = []
-        with open("database/vaults.csv", newline="") as f:
-            reader = csv.DictReader(f)
-        
-            for row in reader:
-                vault_count.append(row["vault_id"])
-            
-            start_vault = len(vault_count)
+    res = cur.execute("SELECT vault_id FROM vaults")
 
-    # Count number of existing pots
-    file_exists = os.path.isfile("database/pots.csv")
+    start_vault = len(res.fetchall())
 
-    if not file_exists:
-        start_pot = 0
-    
-    else:
-        pot_count = []
-        with open("database/pots.csv", newline="") as f:
-            reader = csv.DictReader(f)
-        
-            for row in reader:
-                pot_count.append(row["pot_id"])
-            
-            start_pot = len(pot_count)
+    # Count number of existing pots in database. if not exist = 0
+
+    res = cur.execute("SELECT pot_id FROM pots")
+
+    start_pot = len(res.fetchall())
 
     # Create a Vault object with valid data
     print_slow(f"Hi {user.username}, let me help you create some vaults. How many do you want to create?: ")
@@ -311,6 +296,32 @@ def create_profile():
     summary(vaults, pots)
     print()
 
+    # Insert user data into the database
+
+    users_data = [
+    (user.username,),
+    ]
+
+    cur.executemany("INSERT INTO users VALUES(?)", users_data)
+
+    # Insert vaults data into the database
+    vaults_data = []
+    for vault in vaults.values():
+        vaults_data.append((vault.vault_id, vault.vault_name, vault.start, vault.end, vault.username))
+        
+    cur.executemany("INSERT INTO vaults VALUES(?, ?, ?, ?, ?)", vaults_data)
+
+    # Insert pots data into the database
+    pots_data = []
+    for pot in pots.values():
+        pots_data.append((pot.pot_id, pot.pot_name, pot.start, pot.end, pot.vault_id, pot.amount, pot.username))
+        
+    cur.executemany("INSERT INTO pots VALUES(?, ?, ?, ?, ?, ?, ?)", pots_data)
+    
+    # Close the database connections
+    con.commit()
+    con.close()
+
     return user, vaults, pots
 
 def instructions():
@@ -344,117 +355,153 @@ We hope you enjoy using Money Pots!
 """
 
 def re_vaults(name, user):
+
+    # Establish Database Connection
+    db_path = "/Users/michaelfortune/Developer/projects/money/money_sql/money.db" 
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+
+    # Create vault and vault_ids variables
+
     vaults = {}
-    with open("database/vaults.csv", newline="") as f:
-        vaults_reader = csv.DictReader(f)
-        vault_ids = []
-        for row in vaults_reader:
-            if row["user"] == name:
-                # Create variables
-                vault_ids.append(int(row["vault_id"]))
-                vault_id = int(row["vault_id"])
-                vault_name = row["vault_name"]
-                start_date = convert_date(row["start"])
-                end_date = convert_date(row["end"])
-                # Create vault instance
-                vault = Vault(vault_id=vault_id, vault_name=vault_name, start=start_date, end=end_date, user=user)
-                # Add instance to vaults object dictionary
-                vaults["vault_{0}".format(row["vault_id"])] = vault
-                # Append vault_id to list
-                vault_ids.append(vault_id)
+    vault_ids = []
+
+    # Searcb the vaults database for all information for defined user 
+    res = cur.execute("SELECT * FROM vaults WHERE username = ?", (name,))
+    returned_vaults = res.fetchall()
+    
+    for vault in returned_vaults:
+        # Create variables
+        vault_ids.append(int(vault[0]))
+        vault_id = int(vault[0])
+        vault_name = vault[1]
+        start_date = convert_date(vault[2])
+        end_date = convert_date(vault[3])
+
+        # Create vault instance
+        vault = Vault(vault_id=vault_id, vault_name=vault_name, start=start_date, end=end_date, user=user)
+        # Add instance to vaults object dictionary
+        vaults["vault_{0}".format(vault_id)] = vault
+
+    con.close()
+
     return vaults, vault_ids
 
 def re_pots(vaults, vault_ids, user):
+
+    # Establish Database Connection
+    db_path = "/Users/michaelfortune/Developer/projects/money/money_sql/money.db" 
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+
+    # Create pots and pot_id variables
     pots = {}
-    with open("database/pots.csv", newline="") as f:
-        pots_reader = csv.DictReader(f)
-        pot_ids = []
-        for row in pots_reader:
-            if int(row["vault_id"]) in vault_ids:
-                # Create variables
-                pot_id = int(row["pot_id"])
-                pot_name = row["pot_name"]
-                start_date = convert_date(row["start"])
-                end_date = convert_date(row["end"])
-                amount = int(row["amount"])
-                vault = vaults[f"vault_{row["vault_id"]}"] # Dictionary key format is "Vault_1: Object"
-                # Create pot instance
-                pot = Pot(pot_id=pot_id, pot_name=pot_name, start=start_date, end=end_date, vault=vault, amount=amount, user=user)
-                # Add instance to pots object dictionary
-                pots["pot_{0}".format(row["pot_id"])] = pot
-                # Append pot_id to list
-                pot_ids.append(pot_id)
+    pot_ids = []
+
+    # Searcb the vaults database for all information for defined vault_ids
+ 
+    for vault in vault_ids:
+    
+        res = cur.execute("SELECT * FROM pots WHERE vault_id = ?", (vault,))
+        returned_pots = res.fetchall()
+        
+        for pot in returned_pots:
+            # Create variables
+            pot_id = int(pot[0])
+            pot_name = pot[1]
+            start_date = convert_date(pot[2])
+            end_date = convert_date(pot[3])
+            amount = int(pot[5])
+            vault = vaults[f"vault_{pot[4]}"] # Dictionary key format is "Vault_1: Object"
+            # Create pot instance
+            pot = Pot(pot_id=pot_id, pot_name=pot_name, start=start_date, end=end_date, vault=vault, amount=amount, user=user)
+            # Add instance to pots object dictionary
+            pots[f"pot_{pot.pot_id}"] = pot
+            # Append pot_id to list
+            pot_ids.append(pot_id)
+
+    con.close()
+
     return pots, pot_ids
 
 def re_transactions(pots, pot_ids, user):
+
+    # Establish Database Connection
+    db_path = "/Users/michaelfortune/Developer/projects/money/money_sql/money.db" 
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+
+    # Create pots and transaction_id variables
     transactions = {}
-    with open("database/transactions.csv", newline="") as f:
-        transactions_reader = csv.DictReader(f)
-        transaction_ids = []
-        for row in transactions_reader:
-            if int(row["pot_id"]) in pot_ids:
-                # Create variables
-                transaction_id = int(row["transaction_id"])
-                transaction_name = row["transaction_name"]
-                date = convert_date(row["date"])
-                type = (row["type"])
-                amount = int(row["amount"])
-                pot = pots[f"pot_{row["pot_id"]}"] # Dictionary key format is "Pot_1: Object"
+    transaction_ids = []
+
+    # Searcb the pots database for all information for defined pot_ids
+
+    for pot in pot_ids:
+    
+        res = cur.execute("SELECT * FROM transactions WHERE pot_id = ?", (pot,))
+        returned_transactions = res.fetchall()
+
+        for transaction in returned_transactions:
+            # Create variables
+                transaction_id = int(transaction[0])
+                transaction_name = transaction[1]
+                date = convert_date(transaction[2])
+                type = (transaction[4])
+                amount = int(transaction[5])
+                pot = pots[f"pot_{transaction[3]}"] # Dictionary key format is "Pot_1: Object"
                 # Create pot instance
                 transaction = Transaction(transaction_id=transaction_id, transaction_name=transaction_name, date=date, pot=pot, type=type, amount=amount, user=user)
                 # Add instance to transactions object dictionary
-                transactions["transaction_{0}".format(row["transaction_id"])] = transaction
+                transactions[f"transaction_{transaction.transaction_id}"] = transaction
                 # Append transaction_id to list
                 transaction_ids.append(transaction_id)
+
+    con.close()
+
     return transactions, transaction_ids
 
 def count_pots():
-    # Count number of existing pots
-    file_exists = os.path.isfile("database/pots.csv")
+    # Establish Database Connection
+    db_path = "/Users/michaelfortune/Developer/projects/money/money_sql/money.db" 
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
 
-    if not file_exists:
-        return 0
+    # Search the database
     
-    else:
-        pots_count = []
-        with open("database/pots.csv", newline="") as f:
-            reader = csv.DictReader(f)
-        
-            for row in reader:
-                pots_count.append(row["pot_id"])
-            
-            return len(pots_count)
+    res = cur.execute("SELECT * FROM pots")
+    returned_pots = res.fetchall()
+
+    # Calculate Length of returned pots
+
+    return len(returned_pots)
         
 def count_vaults():
-    # Count number of existing pots
-    file_exists = os.path.isfile("database/vaults.csv")
+    # Establish Database Connection
+    db_path = "/Users/michaelfortune/Developer/projects/money/money_sql/money.db" 
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
 
-    if not file_exists:
-        return 0
+    # Search the database
     
-    else:
-        vaults_count = []
-        with open("database/vaults.csv", newline="") as f:
-            reader = csv.DictReader(f)
-        
-            for row in reader:
-                vaults_count.append(row["vault_id"])
-            
-            return len(vaults_count)
+    res = cur.execute("SELECT * FROM vaults")
+    returned_vaults = res.fetchall()
+
+    # Calculate Length of returned pots
+
+    return len(returned_vaults)
         
 def count_transactions():
-    # Count number of existing pots
-    file_exists = os.path.isfile("database/transactions.csv")
+    # Establish Database Connection
+    db_path = "/Users/michaelfortune/Developer/projects/money/money_sql/money.db" 
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
 
-    if not file_exists:
-        return 0
+    # Search the database
     
-    else:
-        transactions_count = []
-        with open("database/transactions.csv", newline="") as f:
-            reader = csv.DictReader(f)
-        
-            for row in reader:
-                transactions_count.append(row["transaction_id"])
-            
-            return len(transactions_count)
+    res = cur.execute("SELECT * FROM transactions")
+    returned_transactions = res.fetchall()
+
+    # Calculate Length of returned pots
+
+    return len(returned_transactions)

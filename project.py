@@ -1,15 +1,22 @@
-import csv, datetime, os
+import datetime, os, sqlite3
 from project_classes import User, Vault, Pot, Transaction
 from project_functions import submit_transaction, print_slow, int_validator, collect_date, convert_date, summary, create_pot, create_user, create_vault, create_profile, instructions, re_vaults, re_pots, re_transactions, count_pots, count_transactions, count_vaults
 from time import sleep
+from database import create_database
+
 
 def main():
     vaults = {}
     pots = {}
     transactions = {}
     
-    file_exists = os.path.isfile("database/users.csv")
-    if not file_exists:
+    # check if database exists
+
+    database_exists = os.path.isfile("/Users/michaelfortune/Developer/projects/money/money_sql/money.db")
+    
+    if not database_exists:
+
+        create_database()
         
         print_slow("""
 Welcome to Money Pots, your savings and budgeting calculator.
@@ -18,69 +25,84 @@ Welcome to Money Pots, your savings and budgeting calculator.
         
         user, vaults, pots = create_profile()
     
-    if file_exists:
+    if database_exists:
+
+        # Establish a connection to the Database
+        db_path = "/Users/michaelfortune/Developer/projects/money/money_sql/money.db" 
+        con = sqlite3.connect(db_path)
+        cur = con.cursor()
+
+        #log user in
         while True:
             print_slow("""
 Welcome to Money Pots, your savings and budgeting calculator. Let me help you to login and view your profile. What's your username?
     """)
-            print()
             login = input().strip() # Remove trailing white space
             user_exists = False
-            with open("database/users.csv", newline="") as f:
-                user_reader = csv.DictReader(f)
 
-                for row in user_reader:
-                    if row['username'] == login:
-                        user_exists = True
-                        name = row['username']
+            # SQL QUERY TO DETERMINE IF USER EXISTS
+
+            res = cur.execute("SELECT username FROM users")
+            returned_users = res.fetchall()
+            for user in returned_users:
+                if login == user[0]:
+                    user_exists = True
+            
+           # REINSTANTIATE OBJECTS FROM DATABASE
                         
-                if user_exists == True:
-                    #reinstantiate user
-                    user = create_user(name)
+            if user_exists == True:
+                #reinstantiate user
+                user = create_user(login)
 
-                    #reinstantiate vaults 
-                    vaults, vault_ids = re_vaults(name, user)
-                    
-                    #reinstantiate pots
-                    pots, pot_ids = re_pots(vaults, vault_ids, user)
+                #reinstantiate vaults 
+                vaults, vault_ids = re_vaults(login, user)
+                
+                #reinstantiate pots
+                pots, pot_ids = re_pots(vaults, vault_ids, user)
 
-                    #reinstantiate transactions
-                    transaction_exists = os.path.isfile("database/transactions.csv")
+                #reinstantiate transactions - START HERE!!!
+                #transaction_exists = os.path.isfile("database/transactions.csv")
 
-                    if not transaction_exists:
-                        pass
+                transaction_exists = False
+                res = cur.execute("SELECT * FROM transactions")
+                returned_transactions = res.fetchall()
+                if len(returned_transactions) > 0:
+                    transaction_exists = True
 
-                    else:
-                        transactions, transaction_ids = re_transactions(pots, pot_ids, user)
-
-                    # Update Pots and Vaults values
-
-                    for pot in pots.values():
-                        pot.pot_value()
-                    
-                    for vault in vaults.values():
-                        vault.vault_value()
-
-                    break
+                if not transaction_exists:
+                    pass
 
                 else:
-                    print()
-                    print("User doesn't exist. Respond 'Try again' 'New user' or 'Exit'")    
-                    print()
+                    transactions, transaction_ids = re_transactions(pots, pot_ids, user)
 
-                    response = input()
+                # Update Pots and Vaults values
 
-                    if response == "New user":
-                        print()
-                        print("Excellent. Please answer the following questions to create a new user profile")
-                        user, vaults, pots = create_profile()
-                        break
-                    elif response == "Try again":
-                        continue
-                    elif response == "Exit":
-                        exit()
-                    else:
-                        print("Unknown Command. Please try to login again")                
+                for pot in pots.values():
+                    pot.pot_value()
+                
+                for vault in vaults.values():
+                    vault.vault_value()
+
+                break
+
+            else:
+                print()
+                print("User doesn't exist. Respond 'Try again' 'New user' or 'Exit'")    
+                print()
+
+                response = input()
+
+                if response == "New user":
+                    print()
+                    print("Excellent. Please answer the following questions to create a new user profile")
+                    user, vaults, pots = create_profile()
+                    break
+                elif response == "Try again":
+                    continue
+                elif response == "Exit":
+                    exit()
+                else:
+                    print("Unknown Command. Please try to login again")                
      
     # Loop until exit
 
