@@ -48,7 +48,6 @@ def submit_transaction(x, pot, user):
         pass
 
     #Input all information into the Class
-    
     transaction = Transaction(transaction_id=transaction_id, transaction_name=transaction_name, date=date, pot=pot, type=type, amount=amount, user=user)
     
     if transaction:
@@ -160,7 +159,6 @@ def create_pot(x, vault, user):
             print("amount must be greater than 0") 
 
     #Input all information into the Class
-    
     pot = Pot(pot_id=pot_id, pot_name=pot_name, start=start_date, end=end_date, vault=vault, amount=amount, user=user)
     
     if pot:
@@ -176,7 +174,6 @@ def create_pot(x, vault, user):
 def create_vault(x, user):
     
     # Collect vault name
-    
     print()
     print_slow("What is your preferred name for the vault?: ")
     vault_name = input()
@@ -186,7 +183,6 @@ def create_vault(x, user):
     vault_id = x + 1
 
     # Collect start date data and create date object
-    
     print_slow("Excellent. Now we'll define when the vault will be in use. Please note, all date input values must be in the format DD/MM/YY")
     print()
     print()
@@ -194,13 +190,11 @@ def create_vault(x, user):
     start_date = collect_date("What is the start date that this vault will be active?: ")
 
     # Collect end date data and create date object
-    
     print()
     end_date = collect_date("What is the end date that this vault will be active?: ")
 
 
     #Input all information into the Class
-    
     vault = Vault(vault_id=vault_id, vault_name=vault_name, start=start_date, end=end_date, user=user)
     
     if vault:
@@ -225,15 +219,11 @@ def create_profile():
     user = create_user()
 
     # Count number of existing vaults in database. if not exist = 0
-
     res = cur.execute("SELECT vault_id FROM vaults")
-
     start_vault = len(res.fetchall())
 
     # Count number of existing pots in database. if not exist = 0
-
     res = cur.execute("SELECT pot_id FROM pots")
-
     start_pot = len(res.fetchall())
 
     # Create a Vault object with valid data
@@ -297,7 +287,6 @@ def create_profile():
     print()
 
     # Insert user data into the database
-
     users_data = [
     (user.username,),
     ]
@@ -362,7 +351,6 @@ def re_vaults(name, user):
     cur = con.cursor()
 
     # Create vault and vault_ids variables
-
     vaults = {}
     vault_ids = []
 
@@ -399,7 +387,6 @@ def re_pots(vaults, vault_ids, user):
     pot_ids = []
 
     # Searcb the vaults database for all information for defined vault_ids
- 
     for vault in vault_ids:
     
         res = cur.execute("SELECT * FROM pots WHERE vault_id = ?", (vault,))
@@ -468,12 +455,10 @@ def count_pots():
     cur = con.cursor()
 
     # Search the database
-    
     res = cur.execute("SELECT * FROM pots")
     returned_pots = res.fetchall()
 
     # Calculate Length of returned pots
-
     return len(returned_pots)
         
 def count_vaults():
@@ -483,12 +468,10 @@ def count_vaults():
     cur = con.cursor()
 
     # Search the database
-    
     res = cur.execute("SELECT * FROM vaults")
     returned_vaults = res.fetchall()
 
     # Calculate Length of returned pots
-
     return len(returned_vaults)
         
 def count_transactions():
@@ -498,10 +481,8 @@ def count_transactions():
     cur = con.cursor()
 
     # Search the database
-    
     res = cur.execute("SELECT * FROM transactions")
     returned_transactions = res.fetchall()
 
     # Calculate Length of returned pots
-
     return len(returned_transactions)

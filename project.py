@@ -4,25 +4,21 @@ from project_functions import submit_transaction, print_slow, int_validator, col
 from time import sleep
 from database import create_database
 
-
 def main():
     vaults = {}
     pots = {}
     transactions = {}
     
     # check if database exists
-
     database_exists = os.path.isfile("/Users/michaelfortune/Developer/projects/money/money_sql/money.db")
     
     if not database_exists:
 
         create_database()
-        
         print_slow("""
 Welcome to Money Pots, your savings and budgeting calculator.
         """)
         print_slow(instructions())
-        
         user, vaults, pots = create_profile()
     
     if database_exists:
@@ -35,13 +31,11 @@ Welcome to Money Pots, your savings and budgeting calculator.
         #log user in
         while True:
             print_slow("""
-Welcome to Money Pots, your savings and budgeting calculator. Let me help you to login and view your profile. What's your username?
-    """)
+Welcome to Money Pots, your savings and budgeting calculator. Let me help you to login and view your profile. What's your username?\n\n""")
             login = input().strip() # Remove trailing white space
             user_exists = False
 
             # SQL QUERY TO DETERMINE IF USER EXISTS
-
             res = cur.execute("SELECT username FROM users")
             returned_users = res.fetchall()
             for user in returned_users:
@@ -53,15 +47,10 @@ Welcome to Money Pots, your savings and budgeting calculator. Let me help you to
             if user_exists == True:
                 #reinstantiate user
                 user = create_user(login)
-
                 #reinstantiate vaults 
                 vaults, vault_ids = re_vaults(login, user)
-                
                 #reinstantiate pots
                 pots, pot_ids = re_pots(vaults, vault_ids, user)
-
-                #reinstantiate transactions - START HERE!!!
-                #transaction_exists = os.path.isfile("database/transactions.csv")
 
                 transaction_exists = False
                 res = cur.execute("SELECT * FROM transactions")
@@ -76,7 +65,6 @@ Welcome to Money Pots, your savings and budgeting calculator. Let me help you to
                     transactions, transaction_ids = re_transactions(pots, pot_ids, user)
 
                 # Update Pots and Vaults values
-
                 for pot in pots.values():
                     pot.pot_value()
                 
@@ -104,10 +92,10 @@ Welcome to Money Pots, your savings and budgeting calculator. Let me help you to
                 else:
                     print("Unknown Command. Please try to login again")                
      
-    # Loop until exit
+    # Loop Menu until exit
 
     while True:
-        print_slow('Now, I await your commands to proceed. Please type: \n\n "Transaction" to submit a new transaction, \n "Summary" to get a report of vault/pot values, or \n "Instructions" to get a further information on how to use Money Pots \n "Vault" to create a new vault \n "Pot" to create a new pot \n "Exit" to terminate the programme')
+        print_slow('\nNow, I await your commands to proceed. Please type: \n\n "Transaction" to submit a new transaction, \n "Summary" to get a report of vault/pot values, or \n "Instructions" to get a further information on how to use Money Pots \n "Vault" to create a new vault \n "Pot" to create a new pot \n "Exit" to terminate the programme')
         print()
         print()
         action = input()
@@ -130,7 +118,6 @@ Welcome to Money Pots, your savings and budgeting calculator. Let me help you to
                         while True: 
                               
                             # Count existing transactions
-                            
                             start_transaction = count_transactions()
                             
                             print_slow("What pot should this pot be assigned to?: ")
@@ -163,26 +150,22 @@ Welcome to Money Pots, your savings and budgeting calculator. Let me help you to
             print()
 
         # Print Summary
-
         elif action == "Summary":
 
             summary(vaults, pots)
             print()
 
         # Print Instructions
-
         elif action == "Instructions":
             print_slow(instructions())
 
         # Create new Vault
-
         elif action == "Vault":
             vault_count = count_vaults()
             vaults[f"vault_{(vault_count + 1)}"] = create_vault(vault_count, user)
             print()
         
         # Create new Pot
-
         elif action == "Pot":
             print_slow("What vault will this pot be assigned to? ")
             pot_vault = input()
@@ -200,7 +183,6 @@ Welcome to Money Pots, your savings and budgeting calculator. Let me help you to
                 print()
         
         # Exit
-
         elif action == "Exit":
             print_slow("OK, the program will now terminate. See final values of the vaults and pots below. Thanks for using Money Pots!")
             print()
